@@ -178,6 +178,18 @@
           <input type="checkbox" id="showRevives" checked>
           <label for="showRevives">Revives</label>
         </div>
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showPlaytime" checked>
+          <label for="showPlaytime">Playtime</label>
+        </div>
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showAssists" checked>
+          <label for="showAssists">Assists</label>
+        </div>
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showMatches" checked>
+          <label for="showMatches">Matches</label>
+        </div>
       </div>
     </div>
 
@@ -212,6 +224,9 @@
       document.getElementById('showHeals').checked = settings.showHeals !== false;
       document.getElementById('showRepairs').checked = settings.showRepairs !== false;
       document.getElementById('showRevives').checked = settings.showRevives !== false;
+      document.getElementById('showPlaytime').checked = settings.showPlaytime !== false;
+      document.getElementById('showAssists').checked = settings.showAssists !== false;
+      document.getElementById('showMatches').checked = settings.showMatches !== false;
 
       websocket = new WebSocket(`ws://127.0.0.1:${inPort}`);
 
@@ -236,6 +251,9 @@
           document.getElementById('showHeals').checked = settings.showHeals !== false;
           document.getElementById('showRepairs').checked = settings.showRepairs !== false;
           document.getElementById('showRevives').checked = settings.showRevives !== false;
+          document.getElementById('showPlaytime').checked = settings.showPlaytime !== false;
+          document.getElementById('showAssists').checked = settings.showAssists !== false;
+          document.getElementById('showMatches').checked = settings.showMatches !== false;
         }
       };
     }
@@ -251,6 +269,9 @@
       settings.showHeals = document.getElementById('showHeals').checked;
       settings.showRepairs = document.getElementById('showRepairs').checked;
       settings.showRevives = document.getElementById('showRevives').checked;
+      settings.showPlaytime = document.getElementById('showPlaytime').checked;
+      settings.showAssists = document.getElementById('showAssists').checked;
+      settings.showMatches = document.getElementById('showMatches').checked;
 
       if (websocket && websocket.readyState === WebSocket.OPEN) {
         websocket.send(JSON.stringify({

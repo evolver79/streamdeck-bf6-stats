@@ -7,7 +7,7 @@
 <body>
 <script>
 const API_BASE = 'https://api.gametools.network/bf6/stats/';
-const ALL_STAT_MODES = ['logo', 'kd', 'kills', 'wins', 'headshots', 'heals', 'repairs', 'revives'];
+const ALL_STAT_MODES = ['logo', 'kd', 'kills', 'wins', 'headshots', 'heals', 'repairs', 'revives', 'playtime', 'assists', 'matches'];
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const CYCLE_INTERVAL = 5 * 1000; // 5 seconds per stat
 
@@ -26,6 +26,9 @@ function getEnabledModes(settings) {
   if (settings.showHeals !== false) modes.push('heals');
   if (settings.showRepairs !== false) modes.push('repairs');
   if (settings.showRevives !== false) modes.push('revives');
+  if (settings.showPlaytime !== false) modes.push('playtime');
+  if (settings.showAssists !== false) modes.push('assists');
+  if (settings.showMatches !== false) modes.push('matches');
   return modes.length > 0 ? modes : ['kd']; // Default to kd if nothing selected
 }
 
@@ -197,6 +200,9 @@ function fetchAndDisplayStats(context) {
         heals: data.heals || 0,
         repairs: data.repairs || 0,
         revives: data.revives || 0,
+        secondsPlayed: data.secondsPlayed || 0,
+        assists: data.killAssists || 0,
+        matches: data.matchesPlayed || 0,
         playerName: data.userName
       });
 
@@ -245,6 +251,15 @@ function displayCurrentStat(context) {
     case 'revives':
       title = 'Revives\n' + formatNumber(stats.revives);
       break;
+    case 'playtime':
+      title = 'Time\n' + formatPlaytime(stats.secondsPlayed);
+      break;
+    case 'assists':
+      title = 'Assists\n' + formatNumber(stats.assists);
+      break;
+    case 'matches':
+      title = 'Matches\n' + formatNumber(stats.matches);
+      break;
   }
 
   clearImage(context);
@@ -258,6 +273,15 @@ function formatNumber(num) {
     return (num / 1000).toFixed(1) + 'K';
   }
   return num.toString();
+}
+
+function formatPlaytime(seconds) {
+  const hours = seconds / 3600;
+  if (hours >= 24) {
+    const days = hours / 24;
+    return days.toFixed(1) + 'd';
+  }
+  return hours.toFixed(1) + 'h';
 }
 
 function setTitle(context, title) {
