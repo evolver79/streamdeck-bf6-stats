@@ -1,0 +1,19 @@
+{
+  "name": "streamdeck-bf6-stats",
+  "version": "1.0.0",
+  "description": "Stream Deck plugin to display Battlefield 6 player statistics",
+  "scripts": {
+    "generate-icons": "node scripts/generate-icons.js",
+    "install-plugin": "node scripts/install-plugin.js",
+    "dev": "node scripts/install-plugin.js --symlink"
+  },
+  "keywords": [
+    "streamdeck",
+    "battlefield",
+    "bf6",
+    "stats",
+    "elgato"
+  ],
+  "author": "jmolund",
+  "license": "MIT"
+}

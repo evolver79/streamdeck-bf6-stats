@@ -1,0 +1,41 @@
+{
+  "Name": "BF6 Stats",
+  "Version": "1.0.1",
+  "Author": "jmolund",
+  "Actions": [
+    {
+      "Name": "BF6 Stats",
+      "UUID": "com.jmolund.bf6stats.action",
+      "Icon": "images/action",
+      "Tooltip": "Display your Battlefield 6 stats",
+      "States": [
+        {
+          "Image": "images/action",
+          "TitleAlignment": "middle",
+          "FontSize": "16"
+        }
+      ],
+      "PropertyInspectorPath": "property-inspector.html"
+    }
+  ],
+  "Category": "BF6 Stats",
+  "CategoryIcon": "images/category",
+  "CodePath": "plugin.html",
+  "Description": "Display your Battlefield 6 player statistics on Stream Deck",
+  "Icon": "images/plugin",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.0"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "10.15"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "UUID": "com.jmolund.bf6stats"
+}

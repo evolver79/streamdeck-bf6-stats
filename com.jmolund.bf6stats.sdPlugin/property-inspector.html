@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>BF6 Stats Settings</title>
+  <style>
+    :root {
+      --bg-color: #2d2d2d;
+      --text-color: #d8d8d8;
+      --input-bg: #3c3c3c;
+      --input-border: #4a4a4a;
+      --accent: #0078d4;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 12px;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+    }
+
+    .sdpi-wrapper {
+      padding: 12px;
+    }
+
+    .sdpi-item {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 16px;
+    }
+
+    .sdpi-item-label {
+      font-weight: 500;
+      margin-bottom: 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #999;
+    }
+
+    .sdpi-item-value input,
+    .sdpi-item-value select {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 13px;
+      background-color: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 4px;
+      color: var(--text-color);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .sdpi-item-value input:focus,
+    .sdpi-item-value select:focus {
+      border-color: var(--accent);
+    }
+
+    .sdpi-item-value input::placeholder {
+      color: #666;
+    }
+
+    .sdpi-heading {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--input-border);
+    }
+
+    .sdpi-info {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .sdpi-button {
+      background-color: var(--accent);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .sdpi-button:hover {
+      background-color: #1084d8;
+    }
+  </style>
+</head>
+<body>
+  <div class="sdpi-wrapper">
+    <div class="sdpi-heading">Battlefield 6 Stats</div>
+
+    <div class="sdpi-item">
+      <div class="sdpi-item-label">Player Name (EA ID)</div>
+      <div class="sdpi-item-value">
+        <input type="text" id="playerName" placeholder="Enter your EA ID / Origin name">
+      </div>
+      <div class="sdpi-info">Your EA account name used to play Battlefield 6</div>
+    </div>
+
+    <div class="sdpi-item">
+      <div class="sdpi-item-label">Platform</div>
+      <div class="sdpi-item-value">
+        <select id="platform">
+          <option value="pc">PC</option>
+          <option value="ps5">PlayStation 5</option>
+          <option value="xboxseries">Xbox Series X|S</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sdpi-item">
+      <button class="sdpi-button" id="refreshBtn">Refresh Stats Now</button>
+    </div>
+
+    <div class="sdpi-info" style="margin-top: 20px;">
+      <strong>Usage:</strong> Press the button on your Stream Deck to cycle through K/D ratio, kills, and win rate. Stats refresh automatically every 5 minutes.
+    </div>
+  </div>
+
+  <script>
+    let websocket = null;
+    let pluginUUID = null;
+    let actionInfo = null;
+    let settings = {};
+
+    function connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo) {
+      pluginUUID = inPropertyInspectorUUID;
+      actionInfo = JSON.parse(inActionInfo);
+      settings = actionInfo.payload.settings || {};
+
+      // Populate fields with saved settings
+      document.getElementById('playerName').value = settings.playerName || '';
+      document.getElementById('platform').value = settings.platform || 'pc';
+
+      websocket = new WebSocket(`ws://127.0.0.1:${inPort}`);
+
+      websocket.onopen = () => {
+        websocket.send(JSON.stringify({
+          event: inRegisterEvent,
+          uuid: inPropertyInspectorUUID
+        }));
+      };
+
+      websocket.onmessage = (evt) => {
+        const message = JSON.parse(evt.data);
+        if (message.event === 'didReceiveSettings') {
+          settings = message.payload.settings || {};
+          document.getElementById('playerName').value = settings.playerName || '';
+          document.getElementById('platform').value = settings.platform || 'pc';
+        }
+      };
+    }
+
+    function saveSettings() {
+      settings.playerName = document.getElementById('playerName').value.trim();
+      settings.platform = document.getElementById('platform').value;
+
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({
+          event: 'setSettings',
+          context: pluginUUID,
+          payload: settings
+        }));
+      }
+    }
+
+    // Auto-save on input change
+    document.getElementById('playerName').addEventListener('input', saveSettings);
+    document.getElementById('platform').addEventListener('change', saveSettings);
+
+    // Refresh button
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      saveSettings();
+      // Send a custom event to trigger refresh (plugin will re-fetch on settings change)
+    });
+  </script>
+</body>
+</html>

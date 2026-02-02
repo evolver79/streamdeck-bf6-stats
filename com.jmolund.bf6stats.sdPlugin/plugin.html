@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>BF6 Stats Plugin</title>
+</head>
+<body>
+<script>
+const API_BASE = 'https://api.gametools.network/bf6/stats/';
+const STAT_MODES = ['kd', 'kills', 'wins'];
+const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+let websocket = null;
+let pluginUUID = null;
+const contexts = new Map();
+const statsCache = new Map();
+
+function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, inInfo) {
+  pluginUUID = inPluginUUID;
+
+  websocket = new WebSocket('ws://127.0.0.1:' + inPort);
+
+  websocket.onopen = function() {
+    websocket.send(JSON.stringify({
+      event: inRegisterEvent,
+      uuid: inPluginUUID
+    }));
+  };
+
+  websocket.onmessage = function(evt) {
+    const message = JSON.parse(evt.data);
+    handleMessage(message);
+  };
+
+  websocket.onerror = function(error) {
+    console.error('WebSocket error:', error);
+  };
+}
+
+function handleMessage(message) {
+  const event = message.event;
+  const context = message.context;
+  const payload = message.payload || {};
+
+  switch(event) {
+    case 'willAppear':
+      onWillAppear(context, payload);
+      break;
+    case 'willDisappear':
+      onWillDisappear(context);
+      break;
+    case 'keyUp':
+      onKeyUp(context, payload);
+      break;
+    case 'didReceiveSettings':
+      onDidReceiveSettings(context, payload);
+      break;
+  }
+}
+
+function onWillAppear(context, payload) {
+  const settings = payload.settings || {};
+  contexts.set(context, {
+    settings: settings,
+    currentStatIndex: 0,
+    refreshInterval: null
+  });
+
+  startRefreshInterval(context);
+  fetchAndDisplayStats(context);
+}
+
+function onWillDisappear(context) {
+  const contextData = contexts.get(context);
+  if (contextData && contextData.refreshInterval) {
+    clearInterval(contextData.refreshInterval);
+  }
+  contexts.delete(context);
+}
+
+function onKeyUp(context, payload) {
+  const contextData = contexts.get(context);
+  if (!contextData) return;
+
+  // Cycle to next stat
+  contextData.currentStatIndex = (contextData.currentStatIndex + 1) % STAT_MODES.length;
+  displayCurrentStat(context);
+}
+
+function onDidReceiveSettings(context, payload) {
+  const contextData = contexts.get(context);
+  if (contextData) {
+    contextData.settings = payload.settings || {};
+    fetchAndDisplayStats(context);
+  }
+}
+
+function startRefreshInterval(context) {
+  const contextData = contexts.get(context);
+  if (!contextData) return;
+
+  if (contextData.refreshInterval) {
+    clearInterval(contextData.refreshInterval);
+  }
+
+  contextData.refreshInterval = setInterval(function() {
+    fetchAndDisplayStats(context);
+  }, REFRESH_INTERVAL);
+}
+
+function fetchAndDisplayStats(context) {
+  const contextData = contexts.get(context);
+  if (!contextData) return;
+
+  const settings = contextData.settings;
+  const playerName = settings.playerName;
+  const platform = settings.platform || 'pc';
+
+  if (!playerName) {
+    setTitle(context, 'Set\nPlayer');
+    return;
+  }
+
+  const url = API_BASE + '?name=' + encodeURIComponent(playerName) + '&platform=' + platform + '&format_values=true';
+
+  fetch(url)
+    .then(function(response) {
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+      return response.json();
+    })
+    .then(function(data) {
+      if (data.errors || !data.userName) {
+        setTitle(context, 'Not\nFound');
+        return;
+      }
+
+      // Calculate totals from classes
+      let totalKills = 0;
+      let totalDeaths = 0;
+      let totalWins = 0;
+      let totalLosses = 0;
+
+      if (data.classes && Array.isArray(data.classes)) {
+        for (let i = 0; i < data.classes.length; i++) {
+          totalKills += data.classes[i].kills || 0;
+          totalDeaths += data.classes[i].deaths || 0;
+        }
+      }
+
+      if (data.gamemodes && Array.isArray(data.gamemodes)) {
+        for (let i = 0; i < data.gamemodes.length; i++) {
+          totalWins += data.gamemodes[i].wins || 0;
+          totalLosses += data.gamemodes[i].losses || 0;
+        }
+      }
+
+      const kd = totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : '0.00';
+      const winRate = (totalWins + totalLosses) > 0
+        ? ((totalWins / (totalWins + totalLosses)) * 100).toFixed(1)
+        : '0.0';
+
+      statsCache.set(context, {
+        kills: totalKills,
+        deaths: totalDeaths,
+        kd: kd,
+        wins: totalWins,
+        losses: totalLosses,
+        winRate: winRate,
+        playerName: data.userName
+      });
+
+      displayCurrentStat(context);
+    })
+    .catch(function(error) {
+      console.error('BF6 Stats fetch error:', error);
+      setTitle(context, 'API\nError');
+    });
+}
+
+function displayCurrentStat(context) {
+  const contextData = contexts.get(context);
+  const stats = statsCache.get(context);
+
+  if (!contextData || !stats) return;
+
+  const mode = STAT_MODES[contextData.currentStatIndex];
+  let title = '';
+
+  switch(mode) {
+    case 'kd':
+      title = 'K/D\n' + stats.kd;
+      break;
+    case 'kills':
+      title = 'Kills\n' + formatNumber(stats.kills);
+      break;
+    case 'wins':
+      title = 'Wins\n' + stats.winRate + '%';
+      break;
+  }
+
+  setTitle(context, title);
+}
+
+function formatNumber(num) {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M';
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K';
+  }
+  return num.toString();
+}
+
+function setTitle(context, title) {
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send(JSON.stringify({
+      event: 'setTitle',
+      context: context,
+      payload: {
+        title: title,
+        target: 0
+      }
+    }));
+  }
+}
+</script>
+</body>
+</html>
