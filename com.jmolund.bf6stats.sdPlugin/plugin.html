@@ -7,7 +7,7 @@
 <body>
 <script>
 const API_BASE = 'https://api.gametools.network/bf6/stats/';
-const STAT_MODES = ['logo', 'kd', 'kills', 'wins'];
+const ALL_STAT_MODES = ['logo', 'kd', 'kills', 'wins', 'headshots', 'heals', 'repairs', 'revives'];
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const CYCLE_INTERVAL = 5 * 1000; // 5 seconds per stat
 
@@ -15,6 +15,19 @@ let websocket = null;
 let pluginUUID = null;
 const contexts = new Map();
 const statsCache = new Map();
+
+function getEnabledModes(settings) {
+  const modes = [];
+  if (settings.showLogo !== false) modes.push('logo');
+  if (settings.showKd !== false) modes.push('kd');
+  if (settings.showKills !== false) modes.push('kills');
+  if (settings.showWins !== false) modes.push('wins');
+  if (settings.showHeadshots !== false) modes.push('headshots');
+  if (settings.showHeals !== false) modes.push('heals');
+  if (settings.showRepairs !== false) modes.push('repairs');
+  if (settings.showRevives !== false) modes.push('revives');
+  return modes.length > 0 ? modes : ['kd']; // Default to kd if nothing selected
+}
 
 function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, inInfo) {
   pluginUUID = inPluginUUID;
@@ -91,7 +104,8 @@ function onKeyUp(context, payload) {
   if (!contextData) return;
 
   // Cycle to next stat
-  contextData.currentStatIndex = (contextData.currentStatIndex + 1) % STAT_MODES.length;
+  const enabledModes = getEnabledModes(contextData.settings);
+  contextData.currentStatIndex = (contextData.currentStatIndex + 1) % enabledModes.length;
   displayCurrentStat(context);
 }
 
@@ -127,7 +141,8 @@ function startCycleInterval(context) {
   contextData.cycleInterval = setInterval(function() {
     // Only cycle if we have stats loaded
     if (statsCache.has(context)) {
-      contextData.currentStatIndex = (contextData.currentStatIndex + 1) % STAT_MODES.length;
+      const enabledModes = getEnabledModes(contextData.settings);
+      contextData.currentStatIndex = (contextData.currentStatIndex + 1) % enabledModes.length;
       displayCurrentStat(context);
     }
   }, CYCLE_INTERVAL);
@@ -177,6 +192,11 @@ function fetchAndDisplayStats(context) {
         wins: wins,
         losses: loses,
         winRate: winPercent.replace('%', ''),
+        headshots: data.headShots || 0,
+        headshotPercent: data.headshots || '0.0%',
+        heals: data.heals || 0,
+        repairs: data.repairs || 0,
+        revives: data.revives || 0,
         playerName: data.userName
       });
 
@@ -194,7 +214,9 @@ function displayCurrentStat(context) {
 
   if (!contextData || !stats) return;
 
-  const mode = STAT_MODES[contextData.currentStatIndex];
+  const enabledModes = getEnabledModes(contextData.settings);
+  const modeIndex = contextData.currentStatIndex % enabledModes.length;
+  const mode = enabledModes[modeIndex];
   let title = '';
 
   switch(mode) {
@@ -210,6 +232,18 @@ function displayCurrentStat(context) {
       break;
     case 'wins':
       title = 'Wins\n' + stats.winRate + '%';
+      break;
+    case 'headshots':
+      title = 'HS\n' + formatNumber(stats.headshots);
+      break;
+    case 'heals':
+      title = 'Heals\n' + formatNumber(stats.heals);
+      break;
+    case 'repairs':
+      title = 'Repairs\n' + formatNumber(stats.repairs);
+      break;
+    case 'revives':
+      title = 'Revives\n' + formatNumber(stats.revives);
       break;
   }
 

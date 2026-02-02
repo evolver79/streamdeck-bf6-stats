@@ -95,6 +95,29 @@
     .sdpi-button:hover {
       background-color: #1084d8;
     }
+
+    .sdpi-checkbox-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .sdpi-checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sdpi-checkbox-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+    }
+
+    .sdpi-checkbox-item label {
+      font-size: 12px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -121,11 +144,49 @@
     </div>
 
     <div class="sdpi-item">
+      <div class="sdpi-item-label">Stats to Display</div>
+      <div class="sdpi-checkbox-group">
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showLogo" checked>
+          <label for="showLogo">Logo</label>
+        </div>
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showKd" checked>
+          <label for="showKd">K/D Ratio</label>
+        </div>
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showKills" checked>
+          <label for="showKills">Kills</label>
+        </div>
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showWins" checked>
+          <label for="showWins">Win Rate</label>
+        </div>
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showHeadshots" checked>
+          <label for="showHeadshots">Headshots</label>
+        </div>
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showHeals" checked>
+          <label for="showHeals">Heals</label>
+        </div>
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showRepairs" checked>
+          <label for="showRepairs">Repairs</label>
+        </div>
+        <div class="sdpi-checkbox-item">
+          <input type="checkbox" id="showRevives" checked>
+          <label for="showRevives">Revives</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="sdpi-item">
       <button class="sdpi-button" id="refreshBtn">Refresh Stats Now</button>
     </div>
 
     <div class="sdpi-info" style="margin-top: 20px;">
-      <strong>Usage:</strong> Press the button on your Stream Deck to cycle through K/D ratio, kills, and win rate. Stats refresh automatically every 5 minutes.
+      <strong>Usage:</strong> Stats auto-cycle every 5 seconds. Press the button to skip to the next stat. Stats refresh from API every 5 minutes.
     </div>
   </div>
 
@@ -143,6 +204,14 @@
       // Populate fields with saved settings
       document.getElementById('playerName').value = settings.playerName || '';
       document.getElementById('platform').value = settings.platform || 'pc';
+      document.getElementById('showLogo').checked = settings.showLogo !== false;
+      document.getElementById('showKd').checked = settings.showKd !== false;
+      document.getElementById('showKills').checked = settings.showKills !== false;
+      document.getElementById('showWins').checked = settings.showWins !== false;
+      document.getElementById('showHeadshots').checked = settings.showHeadshots !== false;
+      document.getElementById('showHeals').checked = settings.showHeals !== false;
+      document.getElementById('showRepairs').checked = settings.showRepairs !== false;
+      document.getElementById('showRevives').checked = settings.showRevives !== false;
 
       websocket = new WebSocket(`ws://127.0.0.1:${inPort}`);
 
@@ -159,6 +228,14 @@
           settings = message.payload.settings || {};
           document.getElementById('playerName').value = settings.playerName || '';
           document.getElementById('platform').value = settings.platform || 'pc';
+          document.getElementById('showLogo').checked = settings.showLogo !== false;
+          document.getElementById('showKd').checked = settings.showKd !== false;
+          document.getElementById('showKills').checked = settings.showKills !== false;
+          document.getElementById('showWins').checked = settings.showWins !== false;
+          document.getElementById('showHeadshots').checked = settings.showHeadshots !== false;
+          document.getElementById('showHeals').checked = settings.showHeals !== false;
+          document.getElementById('showRepairs').checked = settings.showRepairs !== false;
+          document.getElementById('showRevives').checked = settings.showRevives !== false;
         }
       };
     }
@@ -166,6 +243,14 @@
     function saveSettings() {
       settings.playerName = document.getElementById('playerName').value.trim();
       settings.platform = document.getElementById('platform').value;
+      settings.showLogo = document.getElementById('showLogo').checked;
+      settings.showKd = document.getElementById('showKd').checked;
+      settings.showKills = document.getElementById('showKills').checked;
+      settings.showWins = document.getElementById('showWins').checked;
+      settings.showHeadshots = document.getElementById('showHeadshots').checked;
+      settings.showHeals = document.getElementById('showHeals').checked;
+      settings.showRepairs = document.getElementById('showRepairs').checked;
+      settings.showRevives = document.getElementById('showRevives').checked;
 
       if (websocket && websocket.readyState === WebSocket.OPEN) {
         websocket.send(JSON.stringify({
@@ -179,6 +264,9 @@
     // Auto-save on input change
     document.getElementById('playerName').addEventListener('input', saveSettings);
     document.getElementById('platform').addEventListener('change', saveSettings);
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', saveSettings);
+    });
 
     // Refresh button
     document.getElementById('refreshBtn').addEventListener('click', () => {
