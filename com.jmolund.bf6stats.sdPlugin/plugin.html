@@ -7,8 +7,9 @@
 <body>
 <script>
 const API_BASE = 'https://api.gametools.network/bf6/stats/';
-const STAT_MODES = ['kd', 'kills', 'wins'];
+const STAT_MODES = ['logo', 'kd', 'kills', 'wins'];
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const CYCLE_INTERVAL = 5 * 1000; // 5 seconds per stat
 
 let websocket = null;
 let pluginUUID = null;
@@ -63,17 +64,24 @@ function onWillAppear(context, payload) {
   contexts.set(context, {
     settings: settings,
     currentStatIndex: 0,
-    refreshInterval: null
+    refreshInterval: null,
+    cycleInterval: null
   });
 
   startRefreshInterval(context);
+  startCycleInterval(context);
   fetchAndDisplayStats(context);
 }
 
 function onWillDisappear(context) {
   const contextData = contexts.get(context);
-  if (contextData && contextData.refreshInterval) {
-    clearInterval(contextData.refreshInterval);
+  if (contextData) {
+    if (contextData.refreshInterval) {
+      clearInterval(contextData.refreshInterval);
+    }
+    if (contextData.cycleInterval) {
+      clearInterval(contextData.cycleInterval);
+    }
   }
   contexts.delete(context);
 }
@@ -108,6 +116,23 @@ function startRefreshInterval(context) {
   }, REFRESH_INTERVAL);
 }
 
+function startCycleInterval(context) {
+  const contextData = contexts.get(context);
+  if (!contextData) return;
+
+  if (contextData.cycleInterval) {
+    clearInterval(contextData.cycleInterval);
+  }
+
+  contextData.cycleInterval = setInterval(function() {
+    // Only cycle if we have stats loaded
+    if (statsCache.has(context)) {
+      contextData.currentStatIndex = (contextData.currentStatIndex + 1) % STAT_MODES.length;
+      displayCurrentStat(context);
+    }
+  }, CYCLE_INTERVAL);
+}
+
 function fetchAndDisplayStats(context) {
   const contextData = contexts.get(context);
   if (!contextData) return;
@@ -117,7 +142,8 @@ function fetchAndDisplayStats(context) {
   const platform = settings.platform || 'pc';
 
   if (!playerName) {
-    setTitle(context, 'Set\nPlayer');
+    setImage(context, 'images/logo');
+    setTitle(context, '');
     return;
   }
 
@@ -136,38 +162,21 @@ function fetchAndDisplayStats(context) {
         return;
       }
 
-      // Calculate totals from classes
-      let totalKills = 0;
-      let totalDeaths = 0;
-      let totalWins = 0;
-      let totalLosses = 0;
-
-      if (data.classes && Array.isArray(data.classes)) {
-        for (let i = 0; i < data.classes.length; i++) {
-          totalKills += data.classes[i].kills || 0;
-          totalDeaths += data.classes[i].deaths || 0;
-        }
-      }
-
-      if (data.gamemodes && Array.isArray(data.gamemodes)) {
-        for (let i = 0; i < data.gamemodes.length; i++) {
-          totalWins += data.gamemodes[i].wins || 0;
-          totalLosses += data.gamemodes[i].losses || 0;
-        }
-      }
-
-      const kd = totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : '0.00';
-      const winRate = (totalWins + totalLosses) > 0
-        ? ((totalWins / (totalWins + totalLosses)) * 100).toFixed(1)
-        : '0.0';
+      // Get stats from API response
+      const kills = data.kills || 0;
+      const deaths = data.deaths || 0;
+      const wins = data.wins || 0;
+      const loses = data.loses || 0;
+      const kd = data.killDeath ? data.killDeath.toFixed(2) : '0.00';
+      const winPercent = data.winPercent || '0.0%';
 
       statsCache.set(context, {
-        kills: totalKills,
-        deaths: totalDeaths,
+        kills: kills,
+        deaths: deaths,
         kd: kd,
-        wins: totalWins,
-        losses: totalLosses,
-        winRate: winRate,
+        wins: wins,
+        losses: loses,
+        winRate: winPercent.replace('%', ''),
         playerName: data.userName
       });
 
@@ -189,6 +198,10 @@ function displayCurrentStat(context) {
   let title = '';
 
   switch(mode) {
+    case 'logo':
+      setImage(context, 'images/logo');
+      setTitle(context, '');
+      return;
     case 'kd':
       title = 'K/D\n' + stats.kd;
       break;
@@ -200,6 +213,7 @@ function displayCurrentStat(context) {
       break;
   }
 
+  clearImage(context);
   setTitle(context, title);
 }
 
@@ -219,6 +233,32 @@ function setTitle(context, title) {
       context: context,
       payload: {
         title: title,
+        target: 0
+      }
+    }));
+  }
+}
+
+function setImage(context, imagePath) {
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send(JSON.stringify({
+      event: 'setImage',
+      context: context,
+      payload: {
+        image: imagePath,
+        target: 0
+      }
+    }));
+  }
+}
+
+function clearImage(context) {
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send(JSON.stringify({
+      event: 'setImage',
+      context: context,
+      payload: {
+        image: null,
         target: 0
       }
     }));
