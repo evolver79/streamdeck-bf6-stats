@@ -28,8 +28,8 @@ if (fs.existsSync(outputPath)) {
   fs.unlinkSync(outputPath);
 }
 
-// Create the .streamDeckPlugin package
-execSync(`cd "${PLUGIN_DIR}" && zip -r "${outputPath}" . -x "*.DS_Store"`, { stdio: 'inherit' });
+// Create the .streamDeckPlugin package (must include the .sdPlugin folder)
+execSync(`cd "${ROOT_DIR}" && zip -r "${outputPath}" com.jmolund.bf6stats.sdPlugin -x "*.DS_Store"`, { stdio: 'inherit' });
 
 console.log(`\n✓ Created: dist/${outputFile}`);
 
