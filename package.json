@@ -5,7 +5,9 @@
   "scripts": {
     "generate-icons": "node scripts/generate-icons.js",
     "install-plugin": "node scripts/install-plugin.js",
-    "dev": "node scripts/install-plugin.js --symlink"
+    "dev": "node scripts/install-plugin.js --symlink",
+    "build": "node scripts/release.js",
+    "release": "node scripts/release.js --publish"
   },
   "keywords": [
     "streamdeck",
